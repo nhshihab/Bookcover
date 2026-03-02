@@ -1,4 +1,4 @@
-import pool from '../../_db.js';
+import pool from '../_db.js';
 
 // GET /api/orders/[userId] — fetch order history for a user
 export default async function handler(req, res) {

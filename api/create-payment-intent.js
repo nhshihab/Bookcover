@@ -1,5 +1,5 @@
 import Stripe from 'stripe';
-import pool from '../_db.js';
+import pool from './_db.js';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
