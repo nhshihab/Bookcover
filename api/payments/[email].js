@@ -1,4 +1,4 @@
-import pool from '../../_db.js';
+import pool from '../../lib/db.js';
 
 // DELETE /api/payments/[email]  — removes payment record on subscription cancel
 export default async function handler(req, res) {
