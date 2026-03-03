@@ -1,4 +1,4 @@
-import pool, { ensureAllTables } from '../_db.js';
+import pool, { ensureAllTables } from '../lib/db.js';
 
 let tablesReady = false;
 
