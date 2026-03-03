@@ -17,6 +17,7 @@ export default async function handler(req, res) {
                currency: currency.toLowerCase(),
                receipt_email: customerEmail,
                metadata: { customerEmail },
+               automatic_payment_methods: { enabled: true },
           });
 
           const conn = await pool.getConnection();
