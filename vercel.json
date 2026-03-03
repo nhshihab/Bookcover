@@ -1,7 +1,6 @@
 {
-     "buildCommand": "vite build",
      "outputDirectory": "dist",
-     "framework": "vite",
+     "buildCommand": "vite build",
      "functions": {
           "api/**/*.js": {
                "maxDuration": 60
