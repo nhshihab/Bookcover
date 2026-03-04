@@ -311,9 +311,9 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900 font-sans">
       {/* Header */}
-      <header className="h-16 bg-white border-b flex items-center justify-between px-8 sticky top-0 z-40 shadow-sm">
+      <header className="h-16 bg-white border-b flex items-center justify-between px-3 sm:px-8 sticky top-0 z-40 shadow-sm">
         <Logo />
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 sm:gap-4">
           <div className="hidden md:flex gap-1">
             {[1, 2, 3, 4].map(s => (
               <div key={s} className={`h-1 w-8 rounded-full ${step >= s ? 'bg-yellow-500' : 'bg-slate-200'}`} />
@@ -322,7 +322,7 @@ const App: React.FC = () => {
           <div className="flex items-center gap-1.5">
             <button
               onClick={handleExportPDF}
-              className="bg-slate-900 text-white px-6 py-2 rounded-full font-bold hover:bg-slate-800 transition shadow-md"
+              className="bg-slate-900 text-white px-3 py-2 sm:px-6 sm:py-2 rounded-full font-bold hover:bg-slate-800 transition shadow-md text-[11px] sm:text-sm whitespace-nowrap"
             >
               {isPaid ? 'Export PDF' : isFreeUser ? `Export PDF (${1 - exportedCovers} left)` : 'Remove Watermark'}
             </button>
@@ -330,7 +330,7 @@ const App: React.FC = () => {
           {isPaid && (
             <button
               onClick={() => setShowDashboard(true)}
-              className="w-10 h-10 bg-gradient-to-tr from-yellow-400 to-yellow-600 text-white rounded-full flex items-center justify-center font-bold font-serif text-lg shadow-lg border-2 border-white hover:scale-105 transition"
+              className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-tr from-yellow-400 to-yellow-600 text-white rounded-full flex items-center justify-center font-bold font-serif text-sm sm:text-lg shadow-lg border-2 border-white hover:scale-105 transition"
               title="Dashboard"
             >
               {subscriberName ? subscriberName.charAt(0).toUpperCase() : 'U'}
@@ -581,19 +581,6 @@ const App: React.FC = () => {
             </div>
           </div>
 
-          {/* Hidden direct-export button */}
-          <button
-            id="btn-direct-pdf"
-            onClick={handleDirectExportPDF}
-            disabled={isExportingPDF}
-            title="Export PDF (Direct)"
-            className="absolute bottom-2 left-2 p-1 text-slate-300 hover:text-slate-400 transition bg-transparent hover:bg-slate-200/50 rounded z-10 disabled:opacity-0"
-          >
-            {isExportingPDF
-              ? <svg className="animate-spin w-3 h-3" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
-              : <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M12 3v11m0 0l-3.5-3.5M12 14l3.5-3.5" /></svg>
-            }
-          </button>
         </section>
       </main>
 

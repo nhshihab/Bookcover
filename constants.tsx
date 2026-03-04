@@ -9,8 +9,8 @@ export const BLEED = 0.125; // Standard KDP bleed per side in inches
 export const WHITE_PAPER_THICKNESS = 0.00225; // Thickness per page for spine calculation
 
 export const Logo = () => (
-  <div className="flex items-center gap-2">
-    <img src="/logo.png" alt="BookCoverBee Logo" className="w-10 h-10 object-contain" />
-    <span className="text-2xl font-black tracking-tighter text-slate-800">BookCover<span className="text-yellow-500">Bee</span></span>
+  <div className="flex items-center gap-1.5 sm:gap-2">
+    <img src="/logo.png" alt="BookCoverBee Logo" className="w-8 h-8 sm:w-10 sm:h-10 object-contain" />
+    <span className="text-xl sm:text-2xl font-black tracking-tighter text-slate-800">BookCover<span className="text-yellow-500">Bee</span></span>
   </div>
 );
