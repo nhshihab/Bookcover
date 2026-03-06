@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { Logo, COLORS } from './constants';
-import { BookConfig, TrimSize, Genre, GENRE_FONTS } from './types';
+import { BookConfig, TrimSize, Genre, GENRE_FONTS, TitleTexture } from './types';
 import CoverCanvas from './components/CoverCanvas';
 import { generateBookArt } from './services/geminiService';
 import CheckoutForm from './components/CheckoutForm';
@@ -17,6 +17,8 @@ const INITIAL_CONFIG: BookConfig = {
   fontFamily: 'Montserrat',
   spineFontFamily: 'Montserrat',
   fontStyle: 'Capitals',
+  titleTexture: TitleTexture.NONE,
+  titleTextureOpacity: 0.45,
   mainColor: '#FFFFFF',
   accentColor: '#D4AF37',
   aiPrompt: 'A shadowy figure standing in the rain with glowing neon signs behind them.',
@@ -50,6 +52,12 @@ const App: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loginError, setLoginError] = useState('');
   const [loggedInEmail, setLoggedInEmail] = useState('');
+  const [coverHistory, setCoverHistory] = useState<Array<{
+    id: string; title: string; author: string; genre: string;
+    exportedAt: string; config: BookConfig;
+  }>>([]);
+  const [showCoverHistory, setShowCoverHistory] = useState(false);
+  const [pendingExportFromHistory, setPendingExportFromHistory] = useState(false);
 
   const showToast = (message: string, type: ToastType = 'info') => {
     const id = Date.now();
@@ -127,6 +135,12 @@ const App: React.FC = () => {
       setIsPaid(true);
       setShowPaymentModal(false);
       showToast(`Welcome back! ${data.quotaLimit - data.quotaUsed} covers remaining.`, 'success');
+      // Load cover history
+      try {
+        const hRes = await fetch(`/api/covers/${encodeURIComponent(data.email)}`);
+        const hData = await hRes.json();
+        if (hRes.ok) setCoverHistory(hData.covers || []);
+      } catch { /* non-blocking */ }
     } catch {
       setLoginError('Could not connect to server. Please try again.');
     }
@@ -234,6 +248,25 @@ const App: React.FC = () => {
     }
     showToast(`Cover exported! ${isPaid ? 30 - next : 0} quota remaining.`, 'success');
     handleDirectExportPDF();
+    // Save to history for paid subscribers
+    if (loggedInEmail) {
+      const entry = {
+        id: Date.now().toString(),
+        title: config.title || 'Untitled',
+        author: config.author || '',
+        genre: config.genre,
+        exportedAt: new Date().toISOString(),
+        config, // full config including generatedImageUrl
+      };
+      fetch('/api/save-cover', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: loggedInEmail, entry }),
+      })
+        .then(r => r.json())
+        .then(d => { if (d.status === 'ok') setCoverHistory(prev => [entry, ...prev].slice(0, 10)); })
+        .catch(err => console.warn('Could not save cover history:', err));
+    }
   };
 
   // ─── Direct PDF export — no account / payment required ───────
@@ -307,6 +340,15 @@ const App: React.FC = () => {
       setIsExportingPDF(false);
     }
   };
+
+  // ── Re-download from history: fire export after canvas re-renders ──
+  useEffect(() => {
+    if (pendingExportFromHistory) {
+      setPendingExportFromHistory(false);
+      handleDirectExportPDF();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingExportFromHistory]);
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900 font-sans">
@@ -388,13 +430,20 @@ const App: React.FC = () => {
             <div className="space-y-6 animate-in slide-in-from-left duration-300">
               <h3 className="text-xl font-bold border-b pb-2">2. Cover Content</h3>
               <div className="space-y-4">
-                <input
-                  placeholder="Book Title"
-                  name="title"
-                  value={config.title}
-                  onChange={handleInputChange}
-                  className="w-full p-3 bg-slate-50 border rounded-xl"
-                />
+                <div>
+                  <textarea
+                    placeholder="Book Title"
+                    name="title"
+                    value={config.title}
+                    onChange={handleInputChange}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) e.preventDefault();
+                    }}
+                    rows={2}
+                    className="w-full p-3 bg-slate-50 border rounded-xl resize-none leading-snug"
+                  />
+                  <p className="text-[11px] text-slate-400 mt-1 text-right">Shift + Enter for a new line</p>
+                </div>
                 <input
                   placeholder="Subtitle (Optional)"
                   name="subtitle"
@@ -505,12 +554,12 @@ const App: React.FC = () => {
 
               <div>
                 <label className="block text-sm font-semibold mb-2">Spine Font</label>
-                <div className="flex gap-2 overflow-x-auto pb-2">
+                <div className="flex gap-2 min-w-0">
                   {['Montserrat', 'Crimson Text', 'Cinzel'].map(f => (
                     <button
                       key={f}
                       onClick={() => { setConfig(prev => ({ ...prev, spineFontFamily: f })); setCoverDirty(true); }}
-                      className={`px-4 py-2 rounded-full whitespace-nowrap border ${config.spineFontFamily === f ? 'bg-slate-900 text-white' : 'bg-white'}`}
+                      className={`flex-1 min-w-0 py-2 rounded-full text-sm truncate border ${config.spineFontFamily === f ? 'bg-slate-900 text-white' : 'bg-white'}`}
                     >
                       {f}
                     </button>
@@ -519,13 +568,43 @@ const App: React.FC = () => {
               </div>
 
               <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-sm font-semibold">Title Texture</label>
+                  <span className="text-xs font-mono text-slate-400">{Math.round(config.titleTextureOpacity * 100)}%</span>
+                </div>
+                {/* Opacity slider */}
+                <input
+                  type="range"
+                  min="20" max="80" step="1"
+                  value={Math.round(config.titleTextureOpacity * 100)}
+                  onChange={(e) => {
+                    setConfig(prev => ({ ...prev, titleTextureOpacity: parseInt(e.target.value) / 100 }));
+                    setCoverDirty(true);
+                  }}
+                  className="w-full h-1 mb-3 cursor-pointer accent-yellow-500"
+                />
+                <div className="grid grid-cols-3 gap-2">
+                  {Object.values(TitleTexture).map(texture => (
+                    <button
+                      key={texture}
+                      onClick={() => { setConfig(prev => ({ ...prev, titleTexture: texture })); setCoverDirty(true); }}
+                      className={`px-2 py-2 border rounded-lg text-xs truncate transition ${config.titleTexture === texture ? 'bg-slate-900 text-white' : 'bg-white hover:bg-slate-50'}`}
+                      title={texture}
+                    >
+                      {texture}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
                 <label className="block text-sm font-semibold mb-2">Text Color</label>
-                <div className="flex gap-2">
+                <div className="flex items-center flex-wrap gap-2">
                   {COLORS.map(c => (
                     <button
                       key={c}
                       onClick={() => { setConfig(prev => ({ ...prev, mainColor: c })); setCoverDirty(true); }}
-                      className={`w-10 h-10 rounded-full border-2 ${config.mainColor === c ? 'border-yellow-500 ring-2 ring-yellow-200' : 'border-slate-200'}`}
+                      className={`w-10 h-10 shrink-0 rounded-full border-2 ${config.mainColor === c ? 'border-yellow-500 ring-2 ring-yellow-200' : 'border-slate-200'}`}
                       style={{ backgroundColor: c }}
                     />
                   ))}
@@ -783,6 +862,15 @@ const App: React.FC = () => {
                 <span>Status</span>
                 <span className="font-bold text-emerald-600">Elite Active</span>
               </div>
+              <div className="flex justify-between items-center group pt-2 border-t">
+                <span>Generated Covers</span>
+                <button
+                  onClick={() => setShowCoverHistory(true)}
+                  className="font-bold text-yellow-600 hover:text-yellow-700 underline underline-offset-2 transition"
+                >
+                  {exportedCovers} cover{exportedCovers !== 1 ? 's' : ''} →
+                </button>
+              </div>
             </div>
 
             <button
@@ -791,6 +879,78 @@ const App: React.FC = () => {
             >
               Cancel Subscription
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Cover History Modal ───────────────────────────────── */}
+      {showCoverHistory && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+          <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl animate-in fade-in zoom-in duration-200 flex flex-col max-h-[85vh]">
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-5 border-b shrink-0">
+              <div>
+                <h2 className="text-xl font-black text-slate-900">Cover History</h2>
+                <p className="text-xs text-slate-400 mt-0.5">{coverHistory.length} cover{coverHistory.length !== 1 ? 's' : ''} saved</p>
+              </div>
+              <button onClick={() => setShowCoverHistory(false)} className="text-slate-400 hover:text-slate-600">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+
+            {/* List */}
+            <div className="overflow-y-auto flex-1 px-6 py-4 space-y-3">
+              {coverHistory.length === 0 ? (
+                <div className="text-center py-16 text-slate-400">
+                  <svg className="w-12 h-12 mx-auto mb-3 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
+                  <p className="text-sm font-medium">No covers exported yet.</p>
+                  <p className="text-xs mt-1">Your exported covers will appear here.</p>
+                </div>
+              ) : (
+                coverHistory.map((entry, i) => (
+                  <div key={entry.id || i} className="flex items-center gap-4 p-4 bg-slate-50 rounded-2xl border hover:border-yellow-300 hover:bg-yellow-50/40 transition group">
+                    {/* AI thumbnail or accent color fallback */}
+                    {entry.config?.generatedImageUrl ? (
+                      <img
+                        src={entry.config.generatedImageUrl}
+                        alt={entry.title}
+                        className="w-10 h-14 rounded-lg shrink-0 border border-slate-200 shadow-sm object-cover"
+                      />
+                    ) : (
+                      <div
+                        className="w-10 h-14 rounded-lg shrink-0 border border-slate-200 shadow-sm"
+                        style={{ backgroundColor: entry.config?.accentColor || '#D4AF37' }}
+                      />
+                    )}
+                    {/* Info */}
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold text-slate-900 truncate text-sm">{entry.title}</p>
+                      <p className="text-xs text-slate-500 truncate">{entry.author} · {entry.genre}</p>
+                      <p className="text-[11px] text-slate-400 mt-0.5">
+                        {new Date(entry.exportedAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}
+                        {' '}
+                        {new Date(entry.exportedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </p>
+                    </div>
+                    {/* Download button — restores full config + auto-triggers PDF export */}
+                    <button
+                      onClick={() => {
+                        setConfig({ ...INITIAL_CONFIG, ...entry.config });
+                        setCoverDirty(true);
+                        setShowCoverHistory(false);
+                        setShowDashboard(false);
+                        setPendingExportFromHistory(true);
+                        showToast('Preparing your cover for download…', 'info');
+                      }}
+                      className="shrink-0 flex items-center gap-1.5 text-xs font-bold bg-slate-900 text-white px-3 py-2 rounded-xl hover:bg-yellow-500 hover:text-black transition"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                      Download
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
         </div>
       )}

@@ -2,7 +2,7 @@
 import React from 'react';
 
 export const COLORS = [
-  '#000000', '#FFFFFF', '#FFFFFF', '#D4AF37', '#800000', '#000080', '#2F4F4F', '#4A0E0E'
+  '#000000', '#FFFFFF', '#D4AF37', '#800000', '#000080', '#2F4F4F', '#4A0E0E'
 ];
 
 export const BLEED = 0.125; // Standard KDP bleed per side in inches

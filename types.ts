@@ -18,6 +18,17 @@ export enum Genre {
   LITERARY = "Literary"
 }
 
+export enum TitleTexture {
+  NONE = "None",
+  GRAIN = "Grain",
+  CRISS_CROSS = "Criss-Cross",
+  LINEN = "Linen",
+  PAPER = "Old Paper",
+  DOTS = "Dots",
+  ETCHED = "Etched",
+  SHADING = "Shading"
+}
+
 export interface BookConfig {
   trimSize: TrimSize;
   pageCount: number;
@@ -29,6 +40,8 @@ export interface BookConfig {
   fontFamily: string;
   spineFontFamily: string;
   fontStyle: 'Serif' | 'Sans-Serif' | 'Capitals';
+  titleTexture: TitleTexture;
+  titleTextureOpacity: number;
   mainColor: string;
   accentColor: string;
   aiPrompt: string;
