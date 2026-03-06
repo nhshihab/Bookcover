@@ -92,7 +92,7 @@ const App: React.FC = () => {
     showConfirm('Are you sure you want to cancel your Elite subscription?', async () => {
       try {
         await fetch(`/api/payments/${encodeURIComponent(loggedInEmail)}`, { method: 'DELETE' });
-        await fetch('/api/cancel-subscription', {
+        await fetch('/api/subscription?action=cancel', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email: loggedInEmail }),
@@ -240,7 +240,7 @@ const App: React.FC = () => {
     setCoverDirty(false);
     // Sync quota to DB for logged-in paid users
     if (loggedInEmail) {
-      fetch('/api/update-quota', {
+      fetch('/api/subscription?action=update-quota', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: loggedInEmail, quotaUsed: next }),
